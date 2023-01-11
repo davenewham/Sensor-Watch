@@ -33,6 +33,7 @@
 #include "watch.h"
 #include "filesystem.h"
 #include "movement.h"
+#include "sunriset.h"
 
 #ifndef MOVEMENT_FIRMWARE
 #include "movement_config.h"
@@ -61,7 +62,7 @@
 
 // Set default LED colors if not set
 #ifndef MOVEMENT_DEFAULT_RED_COLOR
-#define MOVEMENT_DEFAULT_RED_COLOR 0x0
+#define MOVEMENT_DEFAULT_RED_COLOR 0xF
 #endif
 #ifndef MOVEMENT_DEFAULT_GREEN_COLOR
 #define MOVEMENT_DEFAULT_GREEN_COLOR 0xF
@@ -210,16 +211,36 @@ void movement_request_tick_frequency(uint8_t freq) {
 }
 
 void movement_illuminate_led(void) {
-    if (movement_state.settings.bit.led_duration) {
-        watch_date_time date_time = watch_rtc_get_date_time();
-        if (date_time.unit.hour < 6 || date_time.unit.hour > 20){
-            watch_set_led_color(movement_state.settings.bit.led_red_color, 0);
+    printf("Oi mate");
+    if (movement_state.settings.bit.led_duration) { 
+        if (is_night()){
+            watch_set_led_color(movement_state.settings.bit.led_red_color << 4, 0);
         } else {
-            watch_set_led_color(0, movement_state.settings.bit.led_green_color);
+            watch_set_led_color(0, movement_state.settings.bit.led_green_color << 4);
         }
         movement_state.light_ticks = (movement_state.settings.bit.led_duration * 2 - 1) * 128;
         _movement_enable_fast_tick_if_needed();
     }
+}
+
+bool is_day(void)
+{
+    watch_date_time date_time = watch_rtc_get_date_time();
+
+    double rise, set;
+    movement_location_t movement_location = (movement_location_t)watch_get_backup_data(1);
+    int16_t lat_centi = (int16_t)movement_location.bit.latitude;
+    int16_t lon_centi = (int16_t)movement_location.bit.longitude;
+    double lat = (double)lat_centi / 100.0;
+    double lon = (double)lon_centi / 100.0;
+
+    uint8_t result = sun_rise_set(date_time.unit.year + WATCH_RTC_REFERENCE_YEAR, date_time.unit.month, date_time.unit.day, lon, lat, &rise, &set);
+
+    double hours_from_utc = ((double)movement_timezone_offsets[movement_state.settings.bit.time_zone]) / 60.0;
+    rise += hours_from_utc;
+    set += hours_from_utc;
+
+    return date_time.unit.hour > rise;
 }
 
 void movement_move_to_face(uint8_t watch_face_index) {

@@ -285,7 +285,10 @@ typedef struct {
 
 void movement_move_to_face(uint8_t watch_face_index);
 void movement_move_to_next_face(void);
+
 void movement_illuminate_led(void);
+
+bool is_day(void);
 
 void movement_request_tick_frequency(uint8_t freq);
 
