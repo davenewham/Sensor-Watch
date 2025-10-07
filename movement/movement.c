@@ -240,8 +240,20 @@ void movement_request_tick_frequency(uint8_t freq) {
 
 void movement_illuminate_led(void) {
     if (movement_state.settings.bit.led_duration != 0b111) {
-        watch_set_led_color(movement_state.settings.bit.led_red_color ? (0xF | movement_state.settings.bit.led_red_color << 4) : 0,
-                            movement_state.settings.bit.led_green_color ? (0xF | movement_state.settings.bit.led_green_color << 4) : 0);
+        // TODO: Use Sunrise / Sunset complication to accurately get timeframe
+        uint8_t red_colour = movement_state.settings.bit.led_red_color;
+        uint8_t green_colour = movement_state.settings.bit.led_green_color;
+
+        watch_date_time date_time = watch_rtc_get_date_time();
+        uint8_t hour = date_time.unit.hour;
+
+        if (hour > 22 | hour < 6){
+            red_colour = 0xF;
+            green_colour = 0x0;
+        }
+
+        watch_set_led_color(red_colour ? (0xF | red_colour << 4) : 0,
+                            green_colour ? (0xF | green_colour << 4) : 0);
         if (movement_state.settings.bit.led_duration == 0) {
             movement_state.light_ticks = 1;
         } else {
